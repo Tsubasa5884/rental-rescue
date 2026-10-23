@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>賃貸レスキュー</title>
+  <meta name="description" content="防音・害虫・断熱・結露など、賃貸の悩み対策グッズを口コミの傾向つきでまとめています。">
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script src="products.js"></script>
+  <style>
+    body { background: #f8fafc; }
+    .chip[aria-pressed="true"] { background: #0f766e; color: #fff; border-color: #0f766e; }
+  </style>
+</head>
+<body class="text-slate-800">
+
+  <!-- 最上部に固定のバナー -->
+  <div class="sticky top-0 z-10 bg-slate-900 text-white shadow">
+    <div class="max-w-3xl mx-auto px-4 py-2 grid grid-cols-2 gap-2 text-sm">
+      <a id="prime-banner" class="rounded-lg bg-sky-500 hover:bg-sky-400 px-3 py-2 text-center font-bold" target="_blank" rel="sponsored noopener">
+        📦 Amazonプライム<br class="sm:hidden">無料体験
+      </a>
+      <a id="audible-banner" class="rounded-lg bg-amber-500 hover:bg-amber-400 px-3 py-2 text-center font-bold" target="_blank" rel="sponsored noopener">
+        🎧 Audible<br class="sm:hidden">無料体験
+      </a>
+    </div>
+  </div>
+
+  <header class="max-w-3xl mx-auto px-4 pt-6 pb-2">
+    <p class="text-xs font-bold text-teal-700">PR・アフィリエイト広告を含みます</p>
+    <h1 class="text-2xl font-extrabold mt-1">賃貸レスキュー</h1>
+    <p class="text-sm text-slate-600 mt-1">賃貸でもできる悩み対策グッズを、口コミの「良い点」と「気になる点」つきで紹介しています。</p>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 pb-10">
+    <!-- 商品ID検索 -->
+    <label class="block mt-4">
+      <span class="text-sm font-bold">動画・投稿で見た商品IDで探す</span>
+      <input id="search" type="search" inputmode="numeric" placeholder="#001"
+        class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-teal-600">
+    </label>
+
+    <!-- カテゴリ絞り込み -->
+    <div id="chips" class="flex flex-wrap gap-2 mt-4"></div>
+
+    <p id="count" class="text-xs text-slate-500 mt-4"></p>
+    <div id="list" class="grid gap-4 mt-2"></div>
+  </main>
+
+  <footer class="max-w-3xl mx-auto px-4 pb-8 text-xs text-slate-500 leading-relaxed">
+    <p id="associate-note"></p>
+    <p class="mt-1">紹介文の一部はAIを活用して編集しています。価格・在庫は変わることがあるので、購入前にAmazonの商品ページで確認してください。</p>
+  </footer>
+
+<script>
+  const site = window.SITE || { categories: {}, ownerName: "" };
+  const products = window.PRODUCTS || [];
+  let activeCategory = "all";
+
+  // バナー（リンク未設定なら隠す）
+  for (const [id, url] of [["prime-banner", site.primeUrl], ["audible-banner", site.audibleUrl]]) {
+    const el = document.getElementById(id);
+    if (url) el.href = url; else el.classList.add("hidden");
+  }
+  document.getElementById("associate-note").textContent =
+    `Amazonのアソシエイトとして、${site.ownerName}は適格販売により収入を得ています。`;
+
+  // カテゴリのボタン
+  const chips = document.getElementById("chips");
+  const chipDefs = [["all", "すべて"], ...Object.entries(site.categories)];
+  for (const [key, label] of chipDefs) {
+    const b = document.createElement("button");
+    b.className = "chip rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-bold";
+    b.textContent = label;
+    b.dataset.key = key;
+    b.addEventListener("click", () => {
+      activeCategory = key;
+      search.value = "";
+      history.replaceState(null, "", location.pathname);  // URL 末尾の #001 を消す
+      render();
+    });
+    chips.appendChild(b);
+  }
+
+  const search = document.getElementById("search");
+  search.addEventListener("input", render);
+
+  function normalizeId(text) {
+    const digits = text.replace(/[^0-9０-９]/g, "").replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+    return digits ? digits.padStart(3, "0") : "";
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function card(p) {
+    const img = p.image_urls && p.image_urls[0]
+      ? `<img src="${escapeHtml(p.image_urls[0])}" alt="" class="w-24 h-24 object-contain rounded-lg bg-slate-100 shrink-0" loading="lazy">`
+      : "";
+    const list = (items, mark) => items.map(t => `<li>${mark} ${escapeHtml(t)}</li>`).join("");
+    return `
+      <article id="p${p.id}" class="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+        <div class="flex items-center gap-2 text-xs font-bold">
+          <span class="rounded bg-slate-900 text-white px-2 py-0.5">#${p.id}</span>
+          <span class="text-teal-700">${escapeHtml(site.categories[p.category] || "")}</span>
+        </div>
+        <div class="flex gap-3 mt-2">
+          ${img}
+          <div>
+            <h2 class="font-bold leading-snug">${escapeHtml(p.name)}</h2>
+            <p class="text-sm text-slate-600 mt-1">★${p.rating}（レビュー${p.review_count.toLocaleString()}件）・参考価格 ${p.price.toLocaleString()}円</p>
+          </div>
+        </div>
+        <ul class="text-sm mt-3 space-y-1">${list(p.good_points, "👍")}</ul>
+        <ul class="text-sm mt-2 space-y-1 text-slate-600">${list(p.bad_points, "⚠️")}</ul>
+        <a href="${escapeHtml(p.amazon_url)}" target="_blank" rel="sponsored noopener"
+          class="mt-4 block rounded-lg bg-orange-500 hover:bg-orange-400 text-white text-center font-bold py-3">Amazonで見る</a>
+      </article>`;
+  }
+
+  function render() {
+    const id = normalizeId(search.value);
+    if (id) activeCategory = "all";
+    const shown = products.filter(p =>
+      id ? p.id === id : (activeCategory === "all" || p.category === activeCategory));
+    for (const b of chips.children) b.setAttribute("aria-pressed", String(b.dataset.key === activeCategory && !id));
+    document.getElementById("count").textContent =
+      shown.length ? `${shown.length} 件` : (id ? `#${id} の商品は見つかりませんでした` : "まだ商品がありません");
+    document.getElementById("list").innerHTML = shown.map(card).join("");
+  }
+
+  // URL の末尾が #001 なら、その商品を表示
+  if (location.hash) search.value = location.hash;
+  window.addEventListener("hashchange", () => { search.value = location.hash; render(); });
+  render();
+</script>
+</body>
+</html>
